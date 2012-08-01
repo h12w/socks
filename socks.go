@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 /*
-An example using this package:
+A complete example using this package:
 	package main
 
 	import (
@@ -44,12 +44,16 @@ import (
 	"errors"
 )
 
+// Constants to choose which version of SOCKS protocol to use.
 const (
 	SOCKS4	= 1
 	SOCKS4A	= 2
 	SOCKS5	= 3
 )
 
+// DialSocksProxy returns the dial function to be used in http.Transport object.
+// Argument socksType should be one of SOCKS4, SOCKS4A and SOCKS5.
+// Argument proxy should be in this format "127.0.0.1:1080".
 func DialSocksProxy(socksType int, proxy string) func(string, string) (net.Conn, error) {
 	if socksType == SOCKS5 {
 		return func (_, targetAddr string) (conn net.Conn, err error) {
