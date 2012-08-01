@@ -10,5 +10,4 @@ A simple example:
     httpClient := &http.Client{Transport: tr}
 
 A complete documentation:
-
-http://go.pkgdoc.org/github.com/hailiang/gosocks
+    http://go.pkgdoc.org/github.com/hailiang/gosocks
