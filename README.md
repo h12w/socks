@@ -1,4 +1,4 @@
 gosocks
 =======
 
-SOCKS4, SOCKS4A, SOCKS5 Proxy Package for Go
+A SOCKS (SOCKS4, SOCKS4A and SOCKS5) Proxy Package for Go
