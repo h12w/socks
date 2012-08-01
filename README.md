@@ -12,7 +12,7 @@ A SOCKS (SOCKS4, SOCKS4A and SOCKS5) Proxy Package for Go
 
     import "github.com/hailiang/gosocks"
 
-###Create a customized dialing function
+###Create a SOCKS proxy dialing function
 
     dialSocksProxy := socks.DialSocksProxy(socks.SOCKS5, "127.0.0.1:1080")
     tr := &http.Transport{Dial: dialSocksProxy}
