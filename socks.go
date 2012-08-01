@@ -2,6 +2,40 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+/*
+An example using this package:
+	package main
+
+	import (
+		"github.com/hailiang/gosocks"
+		"fmt"
+		"net/http"
+		"io/ioutil"
+	)
+
+	func main() {
+		dialSocksProxy := socks.DialSocksProxy(socks.SOCKS5, "127.0.0.1:1080")
+		tr := &http.Transport{Dial: dialSocksProxy}
+		httpClient := &http.Client{Transport: tr}
+		
+		bodyText, err := TestHttpsGet(httpClient, "https://github.com/about")
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		fmt.Print(bodyText)
+	}
+
+	func TestHttpsGet(c *http.Client, url string) (bodyText string, err error) {
+		resp, err := c.Get(url)
+		if err != nil { return }
+		defer resp.Body.Close()
+		
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil { return }
+		bodyText = string(body)
+		return
+	}
+*/
 package socks
 import (
 	"fmt"
