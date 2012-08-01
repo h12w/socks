@@ -9,5 +9,4 @@ A simple example:
     tr := &http.Transport{Dial: dialSocksProxy}
     httpClient := &http.Client{Transport: tr}
 
-A complete documentation:
-    http://go.pkgdoc.org/github.com/hailiang/gosocks
+A complete documentation:  http://go.pkgdoc.org/github.com/hailiang/gosocks
