@@ -46,9 +46,9 @@ import (
 
 // Constants to choose which version of SOCKS protocol to use.
 const (
-	SOCKS4	= 1
-	SOCKS4A	= 2
-	SOCKS5	= 3
+	SOCKS4	= iota
+	SOCKS4A
+	SOCKS5
 )
 
 // DialSocksProxy returns the dial function to be used in http.Transport object.
