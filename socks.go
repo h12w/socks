@@ -3,6 +3,8 @@
 // license that can be found in the LICENSE file.
 
 /*
+Package socks implements a SOCKS (SOCKS4, SOCKS4A and SOCKS5) proxy client.
+
 A complete example using this package:
 	package main
 
