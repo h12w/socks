@@ -9,7 +9,7 @@ A complete example using this package:
 	package main
 
 	import (
-		"github.com/hailiang/gosocks"
+		"github.com/hailiang/socks"
 		"fmt"
 		"net/http"
 		"io/ioutil"
