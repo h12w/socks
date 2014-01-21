@@ -1,16 +1,16 @@
-GOSOCKS
-=======
+SOCKS
+=====
 
 A SOCKS (SOCKS4, SOCKS4A and SOCKS5) Proxy Package for Go
 
 ##Quick Start
 ###Get the package
 
-    go get -u "github.com/hailiang/gosocks"
+    go get -u "github.com/hailiang/socks"
 
 ###Import the package
 
-    import "github.com/hailiang/gosocks"
+    import "github.com/hailiang/socks"
 
 ###Create a SOCKS proxy dialing function
 
@@ -19,7 +19,7 @@ A SOCKS (SOCKS4, SOCKS4A and SOCKS5) Proxy Package for Go
     httpClient := &http.Client{Transport: tr}
 
 ##Complete Documentation
-http://go.pkgdoc.org/github.com/hailiang/gosocks
+http://go.pkgdoc.org/github.com/hailiang/socks
 
 ##Alternatives
 http://code.google.com/p/go/source/browse/?repo=net#hg%2Fproxy
