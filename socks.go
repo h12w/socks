@@ -9,7 +9,7 @@ A complete example using this package:
 	package main
 
 	import (
-		"github.com/hailiang/socks"
+		"h12.me/socks"
 		"fmt"
 		"net/http"
 		"io/ioutil"
@@ -20,7 +20,7 @@ A complete example using this package:
 		tr := &http.Transport{Dial: dialSocksProxy}
 		httpClient := &http.Client{Transport: tr}
 
-		bodyText, err := TestHttpsGet(httpClient, "https://github.com/about")
+		bodyText, err := TestHttpsGet(httpClient, "https://h12.me")
 		if err != nil {
 			fmt.Println(err.Error())
 		}
