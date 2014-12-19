@@ -20,7 +20,7 @@ A complete example using this package:
 		tr := &http.Transport{Dial: dialSocksProxy}
 		httpClient := &http.Client{Transport: tr}
 
-		bodyText, err := TestHttpsGet(httpClient, "https://h12.me")
+		bodyText, err := TestHttpsGet(httpClient, "https://h12.me/about")
 		if err != nil {
 			fmt.Println(err.Error())
 		}
