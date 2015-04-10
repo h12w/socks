@@ -21,4 +21,4 @@ SOCKS is a SOCKS4, SOCKS4A and SOCKS5 proxy package for Go.
     httpClient := &http.Client{Transport: tr}
 
 ## Alternatives
-http://code.google.com/p/go/source/browse/?repo=net#hg%2Fproxy
+http://godoc.org/golang.org/x/net/proxy
