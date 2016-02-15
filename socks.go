@@ -88,10 +88,10 @@ func dialSocks5(proxy, targetAddr string) (conn net.Conn, err error) {
 		return
 	} else if len(resp) != 2 {
 		err = errors.New("Server does not respond properly.")
-        return
+		return
 	} else if resp[0] != 5 {
 		err = errors.New("Server does not support Socks 5.")
-        return
+		return
 	} else if resp[1] != 0 { // no auth
 		err = errors.New("socks method negotiation failed.")
 		return
@@ -159,7 +159,7 @@ func dialSocks4(socksType int, proxy, targetAddr string) (conn net.Conn, err err
 		return
 	} else if len(resp) != 8 {
 		err = errors.New("Server does not respond properly.")
-        return
+		return
 	}
 	switch resp[1] {
 	case 90:
