@@ -16,7 +16,7 @@ A complete example using this package:
 	)
 
 	func main() {
-		dialSocksProxy := socks.DialSocksProxy(socks.SOCKS5, "127.0.0.1:1080")
+		dialSocksProxy := socks.DialSocksProxy(socks.SOCKS5, "127.0.0.1:1080",nil)
 		tr := &http.Transport{Dial: dialSocksProxy}
 		httpClient := &http.Client{Transport: tr}
 
@@ -55,11 +55,12 @@ const (
 	SOCKS5
 )
 
+//Opt Some optional parameters
 type Opt struct {
 	User        string
 	Password    string
-	DialTimeout time.Duration
-	Timeout     time.Duration
+	DialTimeout time.Duration //default : 5 seconds
+	Timeout     time.Duration //default : 15 seconds
 }
 
 // DialSocksProxy returns the dial function to be used in http.Transport object.
