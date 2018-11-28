@@ -38,13 +38,14 @@ A complete example using this package:
 		return
 	}
 */
-package socks // import "h12.io/socks"
+package socks
 
 import (
 	"errors"
 	"fmt"
 	"net"
 	"strconv"
+	"time"
 )
 
 // Constants to choose which version of SOCKS protocol to use.
@@ -54,25 +55,41 @@ const (
 	SOCKS5
 )
 
+type Opt struct {
+	User        string
+	Password    string
+	DialTimeout time.Duration
+	Timeout     time.Duration
+}
+
 // DialSocksProxy returns the dial function to be used in http.Transport object.
 // Argument socksType should be one of SOCKS4, SOCKS4A and SOCKS5.
 // Argument proxy should be in this format "127.0.0.1:1080".
-func DialSocksProxy(socksType int, proxy string) func(string, string) (net.Conn, error) {
+func DialSocksProxy(socksType int, proxy string, opt *Opt) func(string, string) (net.Conn, error) {
+	if opt == nil {
+		opt = new(Opt)
+	}
+	if opt.Timeout == 0 {
+		opt.Timeout = time.Second * 15
+	}
+	if opt.DialTimeout == 0 {
+		opt.DialTimeout = opt.Timeout
+	}
 	if socksType == SOCKS5 {
 		return func(_, targetAddr string) (conn net.Conn, err error) {
-			return dialSocks5(proxy, targetAddr)
+			return dialSocks5(proxy, targetAddr, opt)
 		}
 	}
 
 	// SOCKS4, SOCKS4A
 	return func(_, targetAddr string) (conn net.Conn, err error) {
-		return dialSocks4(socksType, proxy, targetAddr)
+		return dialSocks4(socksType, proxy, targetAddr, opt)
 	}
 }
 
-func dialSocks5(proxy, targetAddr string) (conn net.Conn, err error) {
+func dialSocks5(proxy, targetAddr string, opt *Opt) (conn net.Conn, err error) {
 	// dial TCP
-	conn, err = net.Dial("tcp", proxy)
+	conn, err = net.DialTimeout("tcp", proxy, opt.DialTimeout)
 	if err != nil {
 		return
 	}
@@ -80,21 +97,43 @@ func dialSocks5(proxy, targetAddr string) (conn net.Conn, err error) {
 	// version identifier/method selection request
 	req := []byte{
 		5, // version number
-		1, // number of methods
-		0, // method 0: no authentication (only anonymous access supported for now)
+		2, // number of methods
+		0, // method 0: no authentication
+		2, //method 2: user:password authentication
 	}
-	resp, err := sendReceive(conn, req)
+	resp, err := sendReceive(conn, req, opt.Timeout)
 	if err != nil {
 		return
 	} else if len(resp) != 2 {
-		err = errors.New("Server does not respond properly.")
+		err = errors.New("server does not respond properly")
 		return
 	} else if resp[0] != 5 {
-		err = errors.New("Server does not support Socks 5.")
+		err = errors.New("server does not support Socks 5")
 		return
-	} else if resp[1] != 0 { // no auth
-		err = errors.New("socks method negotiation failed.")
+	} else if resp[1] != 0 && resp[1] != 2 { // no auth (0)  /  user:password (2)
+		err = errors.New("socks method negotiation failed")
 		return
+	}
+	//auth user:password info
+	if resp[1] == 2 {
+		req = make([]byte, 0, 255)
+		req = []byte{
+			1, //version number
+			byte(len(opt.User)),
+		}
+		req = append(req, []byte(opt.User)...)
+		req = append(req, byte(len(opt.Password)))
+		req = append(req, []byte(opt.Password)...)
+		resp, err = sendReceive(conn, req, opt.Timeout)
+		if err != nil {
+			return
+		} else if len(resp) != 2 {
+			err = errors.New("server does not respond properly")
+			return
+		} else if resp[1] != 0 {
+			err = errors.New("authentication failed")
+			return
+		}
 	}
 
 	// detail request
@@ -111,7 +150,7 @@ func dialSocks5(proxy, targetAddr string) (conn net.Conn, err error) {
 		byte(port >> 8), // higher byte of destination port
 		byte(port),      // lower byte of destination port (big endian)
 	}...)
-	resp, err = sendReceive(conn, req)
+	resp, err = sendReceive(conn, req, opt.Timeout)
 	if err != nil {
 		return
 	} else if len(resp) != 10 {
@@ -123,9 +162,9 @@ func dialSocks5(proxy, targetAddr string) (conn net.Conn, err error) {
 	return
 }
 
-func dialSocks4(socksType int, proxy, targetAddr string) (conn net.Conn, err error) {
+func dialSocks4(socksType int, proxy, targetAddr string, opt *Opt) (conn net.Conn, err error) {
 	// dial TCP
-	conn, err = net.Dial("tcp", proxy)
+	conn, err = net.DialTimeout("tcp", proxy, opt.DialTimeout)
 	if err != nil {
 		return
 	}
@@ -154,7 +193,7 @@ func dialSocks4(socksType int, proxy, targetAddr string) (conn net.Conn, err err
 		req = append(req, []byte(host+"\x00")...)
 	}
 
-	resp, err := sendReceive(conn, req)
+	resp, err := sendReceive(conn, req, opt.Timeout)
 	if err != nil {
 		return
 	} else if len(resp) != 8 {
@@ -176,7 +215,9 @@ func dialSocks4(socksType int, proxy, targetAddr string) (conn net.Conn, err err
 	return
 }
 
-func sendReceive(conn net.Conn, req []byte) (resp []byte, err error) {
+func sendReceive(conn net.Conn, req []byte, timeout time.Duration) (resp []byte, err error) {
+	conn.SetDeadline(time.Now().Add(timeout))
+	defer conn.SetDeadline(time.Time{})
 	_, err = conn.Write(req)
 	if err != nil {
 		return
