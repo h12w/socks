@@ -66,25 +66,28 @@ type Opt struct {
 // DialSocksProxy returns the dial function to be used in http.Transport object.
 // Argument socksType should be one of SOCKS4, SOCKS4A and SOCKS5.
 // Argument proxy should be in this format "127.0.0.1:1080".
-func DialSocksProxy(socksType int, proxy string, opt *Opt) func(string, string) (net.Conn, error) {
-	if opt == nil {
-		opt = new(Opt)
+func DialSocksProxy(socksType int, proxy string, opt ...*Opt) func(string, string) (net.Conn, error) {
+	var o *Opt
+	if len(opt) == 0 {
+		o = new(Opt)
+	} else {
+		o = opt[0]
 	}
-	if opt.Timeout == 0 {
-		opt.Timeout = time.Second * 15
+	if o.Timeout == 0 {
+		o.Timeout = time.Second * 15
 	}
-	if opt.DialTimeout == 0 {
-		opt.DialTimeout = opt.Timeout
+	if o.DialTimeout == 0 {
+		o.DialTimeout = o.Timeout
 	}
 	if socksType == SOCKS5 {
 		return func(_, targetAddr string) (conn net.Conn, err error) {
-			return dialSocks5(proxy, targetAddr, opt)
+			return dialSocks5(proxy, targetAddr, o)
 		}
 	}
 
 	// SOCKS4, SOCKS4A
 	return func(_, targetAddr string) (conn net.Conn, err error) {
-		return dialSocks4(socksType, proxy, targetAddr, opt)
+		return dialSocks4(socksType, proxy, targetAddr, o)
 	}
 }
 
@@ -96,11 +99,20 @@ func dialSocks5(proxy, targetAddr string, opt *Opt) (conn net.Conn, err error) {
 	}
 
 	// version identifier/method selection request
-	req := []byte{
-		5, // version number
-		2, // number of methods
-		0, // method 0: no authentication
-		2, //method 2: user:password authentication
+	var req []byte
+	if opt.User == "" {
+		req = []byte{
+			5, // version number
+			1, // number of methods
+			0, // method 0: no authentication
+		}
+	} else {
+		req = []byte{
+			5, // version number
+			2, // number of methods
+			0, // method 0: no authentication
+			2, //method 2: user:password authentication
+		}
 	}
 	resp, err := sendReceive(conn, req, opt.Timeout)
 	if err != nil {
@@ -111,7 +123,7 @@ func dialSocks5(proxy, targetAddr string, opt *Opt) (conn net.Conn, err error) {
 	} else if resp[0] != 5 {
 		err = errors.New("server does not support Socks 5")
 		return
-	} else if resp[1] != 0 && resp[1] != 2 { // no auth (0)  /  user:password (2)
+	} else if resp[1] != 0 && (opt.User != "" && resp[1] != 2) { // no auth (0)  /  user:password (2)
 		err = errors.New("socks method negotiation failed")
 		return
 	}
