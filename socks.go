@@ -16,7 +16,7 @@ A complete example using this package:
 	)
 
 	func main() {
-		dialSocksProxy := socks.DialSocksProxy(socks.SOCKS5, "127.0.0.1:1080")
+		dialSocksProxy := socks.Dial("socks5://127.0.0.1:1080?timeout=5s")
 		tr := &http.Transport{Dial: dialSocksProxy}
 		httpClient := &http.Client{Transport: tr}
 
@@ -44,7 +44,9 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"strconv"
+	"time"
 )
 
 // Constants to choose which version of SOCKS protocol to use.
@@ -54,23 +56,87 @@ const (
 	SOCKS5
 )
 
+type (
+	Config struct {
+		Proto   int
+		Host    string
+		Auth    Auth
+		Timeout time.Duration
+	}
+	Auth struct {
+		Username string
+		Password string
+	}
+)
+
+func parse(proxyURI string) (*Config, error) {
+	uri, err := url.Parse(proxyURI)
+	if err != nil {
+		return nil, err
+	}
+	cfg := &Config{}
+	switch uri.Scheme {
+	case "socks4":
+		cfg.Proto = SOCKS4
+	case "socks4a":
+		cfg.Proto = SOCKS4A
+	case "socks5":
+		cfg.Proto = SOCKS5
+	default:
+		return nil, fmt.Errorf("unknown SOCKS protocol %s", uri.Scheme)
+	}
+	cfg.Host = uri.Host
+	if uri.User != nil {
+		cfg.Auth.Username = uri.User.Username()
+		cfg.Auth.Password, _ = uri.User.Password()
+	}
+	query := uri.Query()
+	timeout := query.Get("timeout")
+	if timeout != "" {
+		var err error
+		cfg.Timeout, err = time.ParseDuration(timeout)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return cfg, nil
+}
+
+// Dial returns the dial function to be used in http.Transport object.
+// Argument proxyURI should be in the format: "socks5://user:password@127.0.0.1:1080?timeout=5s".
+// The protocol could be socks5, socks4 and socks4a.
+func Dial(proxyURI string) func(string, string) (net.Conn, error) {
+	cfg, err := parse(proxyURI)
+	if err != nil {
+		return dialError(err)
+	}
+	return cfg.dialFunc()
+}
+
 // DialSocksProxy returns the dial function to be used in http.Transport object.
 // Argument socksType should be one of SOCKS4, SOCKS4A and SOCKS5.
 // Argument proxy should be in this format "127.0.0.1:1080".
 func DialSocksProxy(socksType int, proxy string) func(string, string) (net.Conn, error) {
-	if socksType == SOCKS5 {
-		return func(_, targetAddr string) (conn net.Conn, err error) {
-			return dialSocks5(proxy, targetAddr)
-		}
-	}
-
-	// SOCKS4, SOCKS4A
-	return func(_, targetAddr string) (conn net.Conn, err error) {
-		return dialSocks4(socksType, proxy, targetAddr)
-	}
+	return (&Config{Proto: SOCKS5, Host: proxy}).dialFunc()
 }
 
-func dialSocks5(proxy, targetAddr string) (conn net.Conn, err error) {
+func (c *Config) dialFunc() func(string, string) (net.Conn, error) {
+	switch c.Proto {
+	case SOCKS5:
+		return func(_, targetAddr string) (conn net.Conn, err error) {
+			return c.dialSocks5(targetAddr)
+		}
+	case SOCKS4, SOCKS4A:
+		return func(_, targetAddr string) (conn net.Conn, err error) {
+			return c.dialSocks4(targetAddr)
+		}
+	}
+	return dialError(fmt.Errorf("unknown SOCKS protocol %v", c.Proto))
+}
+
+func (cfg *Config) dialSocks5(targetAddr string) (conn net.Conn, err error) {
+	proxy := cfg.Host
+
 	// dial TCP
 	conn, err = net.Dial("tcp", proxy)
 	if err != nil {
@@ -83,7 +149,7 @@ func dialSocks5(proxy, targetAddr string) (conn net.Conn, err error) {
 		1, // number of methods
 		0, // method 0: no authentication (only anonymous access supported for now)
 	}
-	resp, err := sendReceive(conn, req)
+	resp, err := cfg.sendReceive(conn, req)
 	if err != nil {
 		return
 	} else if len(resp) != 2 {
@@ -99,6 +165,9 @@ func dialSocks5(proxy, targetAddr string) (conn net.Conn, err error) {
 
 	// detail request
 	host, port, err := splitHostPort(targetAddr)
+	if err != nil {
+		return nil, err
+	}
 	req = []byte{
 		5,               // version number
 		1,               // connect command
@@ -111,7 +180,7 @@ func dialSocks5(proxy, targetAddr string) (conn net.Conn, err error) {
 		byte(port >> 8), // higher byte of destination port
 		byte(port),      // lower byte of destination port (big endian)
 	}...)
-	resp, err = sendReceive(conn, req)
+	resp, err = cfg.sendReceive(conn, req)
 	if err != nil {
 		return
 	} else if len(resp) != 10 {
@@ -123,7 +192,10 @@ func dialSocks5(proxy, targetAddr string) (conn net.Conn, err error) {
 	return
 }
 
-func dialSocks4(socksType int, proxy, targetAddr string) (conn net.Conn, err error) {
+func (cfg *Config) dialSocks4(targetAddr string) (conn net.Conn, err error) {
+	socksType := cfg.Proto
+	proxy := cfg.Host
+
 	// dial TCP
 	conn, err = net.Dial("tcp", proxy)
 	if err != nil {
@@ -154,7 +226,7 @@ func dialSocks4(socksType int, proxy, targetAddr string) (conn net.Conn, err err
 		req = append(req, []byte(host+"\x00")...)
 	}
 
-	resp, err := sendReceive(conn, req)
+	resp, err := cfg.sendReceive(conn, req)
 	if err != nil {
 		return
 	} else if len(resp) != 8 {
@@ -173,20 +245,34 @@ func dialSocks4(socksType int, proxy, targetAddr string) (conn net.Conn, err err
 	default:
 		err = errors.New("Socks connection request failed, unknown error.")
 	}
+	// clear the deadline before returning
+	if err := conn.SetDeadline(time.Time{}); err != nil {
+		return nil, err
+	}
 	return
 }
 
-func sendReceive(conn net.Conn, req []byte) (resp []byte, err error) {
+func (cfg *Config) sendReceive(conn net.Conn, req []byte) (resp []byte, err error) {
+	if cfg.Timeout > 0 {
+		if err := conn.SetWriteDeadline(time.Now().Add(cfg.Timeout)); err != nil {
+			return nil, err
+		}
+	}
 	_, err = conn.Write(req)
 	if err != nil {
 		return
 	}
-	resp, err = readAll(conn)
+	resp, err = cfg.readAll(conn)
 	return
 }
 
-func readAll(conn net.Conn) (resp []byte, err error) {
+func (cfg *Config) readAll(conn net.Conn) (resp []byte, err error) {
 	resp = make([]byte, 1024)
+	if cfg.Timeout > 0 {
+		if err := conn.SetReadDeadline(time.Now().Add(cfg.Timeout)); err != nil {
+			return nil, err
+		}
+	}
 	n, err := conn.Read(resp)
 	resp = resp[:n]
 	return
@@ -198,7 +284,7 @@ func lookupIP(host string) (ip net.IP, err error) {
 		return
 	}
 	if len(ips) == 0 {
-		err = errors.New(fmt.Sprintf("Cannot resolve host: %s.", host))
+		err = fmt.Errorf("Cannot resolve host: %s.", host)
 		return
 	}
 	ip = ips[0].To4()
@@ -212,7 +298,19 @@ func lookupIP(host string) (ip net.IP, err error) {
 
 func splitHostPort(addr string) (host string, port uint16, err error) {
 	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", 0, err
+	}
 	portInt, err := strconv.ParseUint(portStr, 10, 16)
+	if err != nil {
+		return "", 0, err
+	}
 	port = uint16(portInt)
 	return
+}
+
+func dialError(err error) func(string, string) (net.Conn, error) {
+	return func(_, _ string) (net.Conn, error) {
+		return nil, err
+	}
 }

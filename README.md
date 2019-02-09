@@ -16,7 +16,7 @@ SOCKS is a SOCKS4, SOCKS4A and SOCKS5 proxy package for Go.
 
 ### Create a SOCKS proxy dialing function
 
-    dialSocksProxy := socks.DialSocksProxy(socks.SOCKS5, "127.0.0.1:1080")
+    dialSocksProxy := socks.Dial("socks5://127.0.0.1:1080?timeout=5s")
     tr := &http.Transport{Dial: dialSocksProxy}
     httpClient := &http.Client{Transport: tr}
 
@@ -35,7 +35,7 @@ import (
 )
 
 func main() {
-	dialSocksProxy := socks.DialSocksProxy(socks.SOCKS5, "127.0.0.1:1080")
+	dialSocksProxy := socks.Dial("socks5://127.0.0.1:1080?timeout=5s")
 	tr := &http.Transport{Dial: dialSocksProxy}
 	httpClient := &http.Client{Transport: tr}
 	resp, err := httpClient.Get("http://www.google.com")
@@ -53,6 +53,3 @@ func main() {
 	fmt.Println(string(buf))
 }
 ```
-
-## Alternatives
-http://godoc.org/golang.org/x/net/proxy
