@@ -117,7 +117,7 @@ func Dial(proxyURI string) func(string, string) (net.Conn, error) {
 // Argument socksType should be one of SOCKS4, SOCKS4A and SOCKS5.
 // Argument proxy should be in this format "127.0.0.1:1080".
 func DialSocksProxy(socksType int, proxy string) func(string, string) (net.Conn, error) {
-	return (&Config{Proto: SOCKS5, Host: proxy}).dialFunc()
+	return (&Config{Proto: socksType, Host: proxy}).dialFunc()
 }
 
 func (c *Config) dialFunc() func(string, string) (net.Conn, error) {
