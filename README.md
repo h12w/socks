@@ -14,11 +14,15 @@ SOCKS is a SOCKS4, SOCKS4A and SOCKS5 proxy package for Go.
 
     import "h12.io/socks"
 
-### Create a SOCKS proxy dialing function
+### Create a SOCKS proxy dialling function
 
     dialSocksProxy := socks.Dial("socks5://127.0.0.1:1080?timeout=5s")
     tr := &http.Transport{Dial: dialSocksProxy}
     httpClient := &http.Client{Transport: tr}
+
+### User/password authentication
+
+    dialSocksProxy := socks.Dial("socks5://user:password@127.0.0.1:1080?timeout=5s")
 
 ## Example
 
