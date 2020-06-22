@@ -67,5 +67,5 @@ func (cfg *config) dialSocks4(targetAddr string) (_ net.Conn, err error) {
 	if err := conn.SetDeadline(time.Time{}); err != nil {
 		return nil, err
 	}
-	return
+	return conn, nil
 }
