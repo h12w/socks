@@ -28,7 +28,7 @@ func (cfg *config) dialSocks4(targetAddr string) (_ net.Conn, err error) {
 	}
 	ip := net.IPv4(0, 0, 0, 1).To4()
 	if socksType == SOCKS4 {
-		ip, err = lookupIP(host)
+		ip, err = lookupIPv4(host)
 		if err != nil {
 			return nil, err
 		}

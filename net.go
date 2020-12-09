@@ -2,7 +2,6 @@ package socks
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -43,19 +42,19 @@ func (c *config) readAll(conn net.Conn) (resp []byte, err error) {
 	return
 }
 
-func lookupIP(host string) (net.IP, error) {
+func lookupIPv4(host string) (net.IP, error) {
 	ips, err := net.LookupIP(host)
 	if err != nil {
 		return nil, err
 	}
-	if len(ips) == 0 {
-		return nil, fmt.Errorf("cannot resolve host: %s", host)
+	for _, ip := range ips {
+		ipv4 := ip.To4()
+		if ipv4 == nil {
+			continue
+		}
+		return ipv4, nil
 	}
-	ip := ips[0].To4()
-	if len(ip) != net.IPv4len {
-		return nil, errors.New("ipv6 is not supported by SOCKS4")
-	}
-	return ip, nil
+	return nil, fmt.Errorf("no IPv4 address found for host: %s", host)
 }
 
 func splitHostPort(addr string) (host string, port uint16, err error) {
