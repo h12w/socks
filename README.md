@@ -3,7 +3,9 @@ SOCKS
 
 [![GoDoc](https://godoc.org/h12.io/socks?status.svg)](https://godoc.org/h12.io/socks)
 
-SOCKS is a SOCKS4, SOCKS4A and SOCKS5 proxy package for Go.
+A SOCKS is a SOCKS4, SOCKS4A and SOCKS5 proxy package for Go.
+
+The package provides `socks.Dial` which returns a TCP dialing function from a socks proxy connection string. The returned dialing function can then be used to establish a TCP connection via the socks proxy or be used to initialize `http.Transport` for an HTTP connection.
 
 ## Quick Start
 ### Get the package
@@ -14,7 +16,7 @@ SOCKS is a SOCKS4, SOCKS4A and SOCKS5 proxy package for Go.
 
     import "h12.io/socks"
 
-### Create a SOCKS proxy dialling function
+### Create a SOCKS proxy dialing function
 
     dialSocksProxy := socks.Dial("socks5://127.0.0.1:1080?timeout=5s")
     tr := &http.Transport{Dial: dialSocksProxy}
